@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.feature_selection import mutual_info_classif
 import numpy
 import pandas as pd
+import itertools
 
 def labelencode_if_object(df_ml):
     for col in df_ml.columns:
@@ -91,6 +92,31 @@ def mutual_information(df):
     for column in df.columns:
         mi[column]=mutual_info_classif(df.values,df[column].values)
     return mi
+
+def greedy_bayes(data,k):
+    columns=set(data.colums)
+    x=columns.pop()
+    network={x:data[x].value_counts(normalize=True)}
+    mi=mutual_information(data)
+    while len(columns)>0:
+        X=None
+        parents=None
+        score=0
+        for i in range(1,min(len(network),k)):
+            for subset in itertools.combinations(network.keys(),i):
+                for candidate in columns:
+                    H=mi.loc[candidate,subset].sum()
+                    if H>score:
+                        X=candidate
+                        parents=subset
+                        score=H
+        network[X]=data.groupby(parents)[X].apply(lambda x: x.value_counts(normalize=True))
+        columns.discard(X)
+    return network
+        
+            
+            
+    
 
 if __name__ == "__main__":
     # simple test to make sure the code is running
