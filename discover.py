@@ -1,7 +1,8 @@
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
-from sklearn.feature_selection import mutual_info_classif
+from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
+from sklearn.utils.multiclass import type_of_target
 import numpy
 import pandas as pd
 import itertools
@@ -90,7 +91,10 @@ def mutual_information(df):
                     index=df.columns,
                     columns=df.columns)
     for column in df.columns:
-        mi[column]=mutual_info_classif(df.values,df[column].values)
+        if type_of_target(df[column].values)=='continuous':
+            mi[column]=mutual_info_regression(df.values,df[column].values)
+        else:
+            mi[column]=mutual_info_classif(df.values,df[column].values)
     return mi
 
 def greedy_bayes(data,k):
