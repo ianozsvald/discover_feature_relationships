@@ -1,4 +1,3 @@
-"""Main discovery process for feature relationships"""
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
@@ -14,11 +13,19 @@ def labelencode_if_object(df_ml):
             df_ml[col] = replacement_series
     return df_ml
 
-def discover(df, classifier_overrides=None, method="rf", random_state=None):
+def discover(df, classifier_overrides=None, method="rf", score_method_class='neg_log_loss', score_method_reg = 'r22', random_state=None):
     """TODO describe what we're doing here"""
     corr_methods = ["pearson", 'spearman', 'kendall']
     known_methods = corr_methods + ['rf']
     assert method in set(known_methods), f"Expecting method to be one of: {known_methods}"
+   
+    score_methods_class = ['accuracy','balanced_accuracy','neg_log_loss']
+    assert score_method_class in set(score_methods_class + [None]), f"Expecting scoring method for class to be one of: {score_methods_class + [None]}"
+    
+    score_methods_reg = ['neg_mean_squared_error','r2']
+    assert score_method_reg in set(score_methods_reg + [None]), f"Expecting scoring method for reg to be one of: {score_methods_reg + [None]}"
+    
+    score_mapping = {}   
     estimator_mapping = {}
     cols = df.columns
     if classifier_overrides is None:
@@ -26,13 +33,18 @@ def discover(df, classifier_overrides=None, method="rf", random_state=None):
     for col in cols:
         if col in classifier_overrides:
             est = RandomForestClassifier(n_estimators=50, random_state=random_state)
+            scorer = score_method_class
         else:
             est = RandomForestRegressor(n_estimators=50, random_state=random_state)
+            scorer = score_method_reg
+            
         estimator_mapping[col] = est
+        score_mapping[col] = scorer
 
     ds = []
     for idx_Y, target in enumerate(cols):
         est = estimator_mapping[target]
+        scorer = score_mapping[target]
         for idx_X, feature in enumerate(cols):
             if idx_X == idx_Y:
                 continue
@@ -63,9 +75,13 @@ def discover(df, classifier_overrides=None, method="rf", random_state=None):
             score = 0.0
             if method=="rf":
                 # cross validation
-                scores = cross_val_score(est, df_X, df_y, cv=3)#, n_jobs=-1)
+                scores = cross_val_score(est, df_X, df_y, scoring=scorer, cv=3)#, n_jobs=-1)
                 score = scores.mean()
-                #score = max(score, 0.0) # set negative r^2 to 0
+                if scorer in ['neg_log_loss','neg_mean_squared_error']:
+                    score = -score
+                if scorer == 'r2':
+                    score = max(score,0.0)
+
             if method in set(corr_methods):
                 pair = df_ml[[feature, target]]
                 assert pair.shape[1] == 2
