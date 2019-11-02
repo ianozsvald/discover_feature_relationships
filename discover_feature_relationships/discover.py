@@ -13,7 +13,7 @@ def labelencode_if_object(df_ml):
             df_ml[col] = replacement_series
     return df_ml
 
-def discover(df, classifier_overrides=None, method="rf", score_method_class='neg_log_loss', score_method_reg = 'r22', random_state=None):
+def discover(df, classifier_overrides=None, method="rf", score_method_class=None, score_method_reg = None, random_state=None):
     """TODO describe what we're doing here"""
     corr_methods = ["pearson", 'spearman', 'kendall']
     known_methods = corr_methods + ['rf']
